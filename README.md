@@ -67,7 +67,7 @@ USAGE:
  Read Laps Pwd            --> "CA;ms-Mcs-AdmPwd" /I:T 
  Reset Laps Pwd           --> "WP;ms-Mcs-AdmPwd" /I:T
 
-# Bitlocker                --> "CCDC;msFVE-REcoveryInformation;" /I:T 
+ Bitlocker                --> "CCDC;msFVE-REcoveryInformation;" /I:T 
 
 
 ### ManageComputersOU
