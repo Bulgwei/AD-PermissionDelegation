@@ -35,17 +35,17 @@ USAGE:
  
 
 ### T2HelpdeskUser role permissions
- reset pwd       --> "CA;Reset Password;user" /I:T
-                 --> "RPWP;pwdLastSet;user" /I:T
- unlock account  --> "RPWP;lockoutTime;user" /I:T
- disable account --> "RPWP;userAccountControl;user" /I:T
+ reset pwd       --> "CA;Reset Password;user" /I:S
+                 --> "RPWP;pwdLastSet;user" /I:S
+ unlock account  --> "RPWP;lockoutTime;user" /I:S
+ disable account --> "RPWP;userAccountControl;user" /I:S
 
 
 ### ManageUserOU
- reset pwd       --> "CA;Reset Password;user" /I:T
-                 --> "RPWP;pwdLastSet;user" /I:T
- unlock account  --> "RPWP;lockoutTime;user" /I:T
- disable account --> "RPWP;userAccountControl;user" /I:T
+ reset pwd       --> "CA;Reset Password;user" /I:S
+                 --> "RPWP;pwdLastSet;user" /I:S
+ unlock account  --> "RPWP;lockoutTime;user" /I:S
+ disable account --> "RPWP;userAccountControl;user" /I:S
  create user     --> "CC;user" /I:T
  delete user     --> "DC;user" /I:T
 
@@ -57,23 +57,29 @@ USAGE:
 
 
 ### T2RestrictedDeviceOperators - manage computers OU + LAPS + BitLocker
- reset pwd                --> "CA;Reset Password;computer" /I:T
-                          --> "RPWP;pwdLastSet;computer" /I:T
- Disable computer account --> "RPWP;userAccountControl;computer" /I:T
+ reset pwd                --> "CA;Reset Password;computer" /I:S
+                          --> "RPWP;pwdLastSet;computer" /I:S
+ Disable computer account --> "RPWP;userAccountControl;computer" /I:S
  delete computer objects  --> "DC;computer" /I:T
  Join/create computer objects  --> "CC;computer" /I:T
 
 # AddLapsPermissions
- Read Laps Pwd            --> "CA;ms-Mcs-AdmPwd" /I:T 
- Reset Laps Pwd           --> "WP;ms-Mcs-AdmPwd" /I:T
+ Read Lapsv1 Pwd            --> "CA;ms-Mcs-AdmPwd" /I:T 
+ Reset Lapsv1 Pwd           --> "WP;ms-Mcs-AdmPwd" /I:T
+
+ Read Lapsv2 Pwd            --> ":CA;msLAPS-Password" /I:T                  # read lapsv2 password
+ Read encrypted Lapsv2 Pwd  --> ":CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
+ Read Lapsv2 Pwd History    --> ":CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
+ Read Lapsv2 Pwd expiry     --> ":CA;msLAPS-PasswordExpirationTime" /I:T    # read lapsv2 password
+ Reset Lapsv2 Pwd           --> ":RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
 
  Bitlocker                --> "CCDC;msFVE-REcoveryInformation;" /I:T 
 
 
 ### ManageComputersOU
- reset pwd                --> "CA;Reset Password;computer" /I:T
-                          --> "RPWP;pwdLastSet;computer" /I:T
- Disable computer account --> "RPWP;userAccountControl;computer" /I:T
+ reset pwd                --> "CA;Reset Password;computer" /I:S
+                          --> "RPWP;pwdLastSet;computer" /I:S
+ Disable computer account --> "RPWP;userAccountControl;computer" /I:S
 
 
 ### ManageGroup
