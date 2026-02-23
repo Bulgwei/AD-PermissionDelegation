@@ -80,8 +80,15 @@
 # Join/create computer objects  --> "CC;computer" /I:T
 #
 # AddLapsPermissions
-# Read Laps Pwd            --> "CA;ms-Mcs-AdmPwd" /I:T 
-# Reset Laps Pwd           --> "WP;ms-Mcs-AdmPwd" /I:T
+# Read Lapsv1 Pwd            --> "CA;ms-Mcs-AdmPwd" /I:T 
+# Reset Lapsv1 Pwd           --> "WP;ms-Mcs-AdmPwd" /I:T
+#
+# Read Lapsv2 Pwd            --> ":CA;ms-LAPS-Password" /I:T                 # read lapsv2 password
+# Read encrypted Lapsv2 Pwd  --> ":CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
+# Read Lapsv2 Pwd History    --> ":CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
+# Read Lapsv2 Pwd expiry     --> ":CA;msLAPS-PasswordExpirationTime" /I:T    # read lapsv2 password
+# Reset Lapsv2 Pwd           --> ":RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
+#
 #
 # Bitlocker                --> "CCDC;msFVE-REcoveryInformation;" /I:T 
 #
