@@ -51,17 +51,17 @@
 # 
 #
 ### T2HelpdeskUser role permissions
-# reset pwd       --> "CA;Reset Password;user" /I:T
-#                 --> "RPWP;pwdLastSet;user" /I:T
-# unlock account  --> "RPWP;lockoutTime;user" /I:T
-# disable account --> "RPWP;userAccountControl;user" /I:T
+# reset pwd       --> "CA;Reset Password;user" /I:S
+#                 --> "RPWP;pwdLastSet;user" /I:S
+# unlock account  --> "RPWP;lockoutTime;user" /I:S
+# disable account --> "RPWP;userAccountControl;user" /I:S
 #
 #
 ### ManageUserOU
-# reset pwd       --> "CA;Reset Password;user" /I:T
-#                 --> "RPWP;pwdLastSet;user" /I:T
-# unlock account  --> "RPWP;lockoutTime;user" /I:T
-# disable account --> "RPWP;userAccountControl;user" /I:T
+# reset pwd       --> "CA;Reset Password;user" /I:S
+#                 --> "RPWP;pwdLastSet;user" /I:S
+# unlock account  --> "RPWP;lockoutTime;user" /I:S
+# disable account --> "RPWP;userAccountControl;user" /I:S
 # create user     --> "CC;user" /I:T
 # delete user     --> "DC;user" /I:T
 #
@@ -73,9 +73,9 @@
 #
 #
 ### T2RestrictedDeviceOperators - manage computers OU + LAPS + BitLocker
-# reset pwd                --> "CA;Reset Password;computer" /I:T
-#                          --> "RPWP;pwdLastSet;computer" /I:T
-# Disable computer account --> "RPWP;userAccountControl;computer" /I:T
+# reset pwd                --> "CA;Reset Password;computer" /I:S
+#                          --> "RPWP;pwdLastSet;computer" /I:S
+# Disable computer account --> "RPWP;userAccountControl;computer" /I:S
 # delete computer objects  --> "DC;computer" /I:T
 # Join/create computer objects  --> "CC;computer" /I:T
 #
@@ -83,7 +83,7 @@
 # Read Lapsv1 Pwd            --> "CA;ms-Mcs-AdmPwd" /I:T 
 # Reset Lapsv1 Pwd           --> "WP;ms-Mcs-AdmPwd" /I:T
 #
-# Read Lapsv2 Pwd            --> ":CA;ms-LAPS-Password" /I:T                 # read lapsv2 password
+# Read Lapsv2 Pwd            --> ":CA;msLAPS-Password" /I:T                  # read lapsv2 password
 # Read encrypted Lapsv2 Pwd  --> ":CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
 # Read Lapsv2 Pwd History    --> ":CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
 # Read Lapsv2 Pwd expiry     --> ":CA;msLAPS-PasswordExpirationTime" /I:T    # read lapsv2 password
@@ -94,9 +94,9 @@
 #
 #
 ### ManageComputersOU
-# reset pwd                --> "CA;Reset Password;computer" /I:T
-#                          --> "RPWP;pwdLastSet;computer" /I:T
-# Disable computer account --> "RPWP;userAccountControl;computer" /I:T
+# reset pwd                --> "CA;Reset Password;computer" /I:S
+#                          --> "RPWP;pwdLastSet;computer" /I:S
+# Disable computer account --> "RPWP;userAccountControl;computer" /I:S
 #
 #
 ### ManageGroup
@@ -117,6 +117,8 @@
 #      code cleaned up
 # version 2.3 / 23.02.2026
 #      added LAPSv2 information to the permission sets
+# version 2.4 / 23.02.2026
+#      fixed some inheritance bugs
 #
 # dev'd by andreas.luy@microsoft.com
 # 
@@ -321,17 +323,16 @@ function Delegate-Permissions
 
         "T2HelpdeskUser" {
             Write-Line "--> Reset Password ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;user" /I:T       # reset pwd
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;user" /I:S       # reset pwd
             if (!$?) {$success = $false; break}
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;pwdLastSet;user" /I:T         # reset pwd
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;pwdLastSet;user" /I:S         # reset pwd
             if (!$?) {$success = $false; break}
             Write-Line "--> Unlock Account ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;lockoutTime;user" /I:T        # unlock account
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;lockoutTime;user" /I:S        # unlock account
             if (!$?) {$success = $false; break}
             Write-Line "--> Disable Account ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;user" /I:T # disable account
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;user" /I:S # disable account
             if (!$?) {$success = $false; break}
-            Write-Line "--> LAPS permissions needs to be set separately ..." -Type "Warning"
         }
 
         "ManageOU" {
@@ -342,15 +343,15 @@ function Delegate-Permissions
 
         "ManageUserOU" {
             Write-Line "--> Reset Password ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;user" /I:T       # reset pwd
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;user" /I:S       # reset pwd
             if (!$?) {$success = $false; break}
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;pwdLastSet;user" /I:T         # reset pwd
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;pwdLastSet;user" /I:S         # reset pwd
             if (!$?) {$success = $false; break}
             Write-Line "--> Unlock Account ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;lockoutTime;user" /I:T        # unlock account
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;lockoutTime;user" /I:S        # unlock account
             if (!$?) {$success = $false; break}
             Write-Line "--> Disable Account ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;user" /I:T # disable account
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;user" /I:S # disable account
             if (!$?) {$success = $false; break}
             Write-Line "--> Create User ..." 
             $res = dsacls "$Script:Target" /G "$Script:AdObject`:CC;user" /I:T                      # create user
@@ -374,12 +375,12 @@ function Delegate-Permissions
 
         "ManageComputersOU" {
             Write-Line "--> Reset Password ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;computer" /I:T       # reset pwd
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;computer" /I:S       # reset pwd
             if (!$?) {$success = $false; break}
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;pwdLastSet;computer" /I:T         # reset pwd
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;pwdLastSet;computer" /I:S         # reset pwd
             if (!$?) {$success = $false; break}
             Write-Line "--> Disable Account ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;computer" /I:T # Disable computer account
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;computer" /I:S # Disable computer account
             if (!$?) {$success = $false; break}
             if ($AddLapsPermissions) {
                 if ($Script:Guidmap.ContainsKey('ms-Mcs-AdmPwd')) {
@@ -392,9 +393,9 @@ function Delegate-Permissions
                 } else {
                     Write-Line "LAPSv1 extension not found - skipping..." -Type "Warning"
                 }
-                if ($Script:Guidmap.ContainsKey('ms-LAPS-Password')) {
+                if ($Script:Guidmap.ContainsKey('msLAPS-Password')) {
                     Write-Line "--> Read LAPSv2 Password ..." 
-                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-LAPS-Password" /I:T                 # read lapsv2 password
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-Password" /I:T                  # read lapsv2 password
                     if (!$?) {$success = $false; break}
                     $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
                     if (!$?) {$success = $false; break}
@@ -408,23 +409,25 @@ function Delegate-Permissions
                 } else {
                     Write-Line "LAPSv2 extension not found - skipping..." -Type "Warning"
                 }
+            } else {
+                Write-Line "--> LAPS permissions needs to be set separately if required ..." -Type "Warning"
             }
             if ($AddBitLockerPermissions) {
                 Write-Line "--> Read BitLocker Information ..." 
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CCDC;msFVE-REcoveryInformation" /I:T # read BitLocker Information
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CCDC;msFVE-REcoveryInformation" /I:S # read BitLocker Information
                 if (!$?) {$success = $false; break}
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:GA;;msFVE-REcoveryInformation" /I:T  #  read BitLocker Information
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:GA;;msFVE-REcoveryInformation" /I:S  #  read BitLocker Information
                 if (!$?) {$success = $false; break}
             }
         }
         "T2RestrictedDeviceOperators" {
             Write-Line "--> Reset Password ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;computer" /I:T       # reset pwd
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;computer" /I:S       # reset pwd
             if (!$?) {$success = $false; break}
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;pwdLastSet;computer" /I:T         # reset pwd
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;pwdLastSet;computer" /I:S         # reset pwd
             if (!$?) {$success = $false; break}
             Write-Line "--> Disable Account ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;computer" /I:T # Disable computer account
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;computer" /I:S # Disable computer account
             if (!$?) {$success = $false; break}
             Write-Line "--> Create Computer ..." 
             $res = dsacls "$Script:Target" /G "$Script:AdObject`:CC;computer" /I:T                      # create computer
@@ -442,9 +445,9 @@ function Delegate-Permissions
             } else {
                 Write-Line "LAPSv1 extension not found - skipping..." -Type "Warning"
             }
-            if ($Script:Guidmap.ContainsKey('ms-LAPS-Password')) {
+            if ($Script:Guidmap.ContainsKey('msLAPS-Password')) {
                 Write-Line "--> Read LAPSv2 Password ..." 
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-LAPS-Password" /I:T                 # read lapsv2 password
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-Password" /I:T                 # read lapsv2 password
                 if (!$?) {$success = $false; break}
                 $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
                 if (!$?) {$success = $false; break}
@@ -459,9 +462,9 @@ function Delegate-Permissions
                 Write-Line "LAPSv2 extension not found - skipping..." -Type "Warning"
             }
             Write-Line "--> Read BitLocker Information ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CCDC;msFVE-REcoveryInformation" /I:T # read BitLocker Information
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CCDC;msFVE-REcoveryInformation" /I:S # read BitLocker Information
             if (!$?) {$success = $false; break}
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:GA;;msFVE-REcoveryInformation" /I:T  #  read BitLocker Information
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:GA;;msFVE-REcoveryInformation" /I:S  #  read BitLocker Information
             if (!$?) {$success = $false; break}
         }
         "ManageGroup" {
