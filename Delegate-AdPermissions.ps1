@@ -108,6 +108,8 @@
 #      added BitLocker information explicitely to the permission sets
 #      added posibility to disable inheritance for a target
 #      code cleaned up
+# version 2.3 / 23.02.2026
+#      added LAPSv2 information to the permission sets
 #
 # dev'd by andreas.luy@microsoft.com
 # 
@@ -373,12 +375,32 @@ function Delegate-Permissions
             $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;userAccountControl;computer" /I:T # Disable computer account
             if (!$?) {$success = $false; break}
             if ($AddLapsPermissions) {
-                Write-Line "--> Read LAPS Password ..." 
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-Mcs-AdmPwd" /I:T             # read laps password
-                if (!$?) {$success = $false; break}
-                Write-Line "--> Reset LAPS Password ..." 
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:WP;ms-Mcs-AdmPwd" /I:T             # reset laps password
-                if (!$?) {$success = $false; break}
+                if ($Script:Guidmap.ContainsKey('ms-Mcs-AdmPwd')) {
+                    Write-Line "--> Read LAPSv1 Password ..." 
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-Mcs-AdmPwd" /I:T             # read lapsv1 password
+                    if (!$?) {$success = $false; break}
+                    Write-Line "--> Reset LAPSv1 Password ..." 
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:WP;ms-Mcs-AdmPwd" /I:T             # reset lapsv1 password
+                    if (!$?) {$success = $false; break}
+                } else {
+                    Write-Line "LAPSv1 extension not found - skipping..." -Type "Warning"
+                }
+                if ($Script:Guidmap.ContainsKey('ms-LAPS-Password')) {
+                    Write-Line "--> Read LAPSv2 Password ..." 
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-LAPS-Password" /I:T                 # read lapsv2 password
+                    if (!$?) {$success = $false; break}
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
+                    if (!$?) {$success = $false; break}
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
+                    if (!$?) {$success = $false; break}
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-PasswordExpirationTime" /I:T    # read lapsv2 password
+                    if (!$?) {$success = $false; break}
+                    Write-Line "--> Reset LAPSv2 Password ..." 
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
+                    if (!$?) {$success = $false; break}
+                } else {
+                    Write-Line "LAPSv2 extension not found - skipping..." -Type "Warning"
+                }
             }
             if ($AddBitLockerPermissions) {
                 Write-Line "--> Read BitLocker Information ..." 
@@ -403,12 +425,32 @@ function Delegate-Permissions
             Write-Line "--> Delete Computer ..." 
             $res = dsacls "$Script:Target" /G "$Script:AdObject`:DC;computer" /I:T                      # delete computer
             if (!$?) {$success = $false; break}
-            Write-Line "--> Read LAPS Password ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-Mcs-AdmPwd" /I:T             # read laps password
-            if (!$?) {$success = $false; break}
-            Write-Line "--> Reset LAPS Password ..." 
-            $res = dsacls "$Script:Target" /G "$Script:AdObject`:WP;ms-Mcs-AdmPwd" /I:T             # reset laps password
-            if (!$?) {$success = $false; break}
+            if ($Script:Guidmap.ContainsKey('ms-Mcs-AdmPwd')) {
+                Write-Line "--> Read LAPSv1 Password ..." 
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-Mcs-AdmPwd" /I:T             # read lapsv1 password
+                if (!$?) {$success = $false; break}
+                Write-Line "--> Reset LAPSv1 Password ..." 
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:WP;ms-Mcs-AdmPwd" /I:T             # reset lapsv1 password
+                if (!$?) {$success = $false; break}
+            } else {
+                Write-Line "LAPSv1 extension not found - skipping..." -Type "Warning"
+            }
+            if ($Script:Guidmap.ContainsKey('ms-LAPS-Password')) {
+                Write-Line "--> Read LAPSv2 Password ..." 
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-LAPS-Password" /I:T                 # read lapsv2 password
+                if (!$?) {$success = $false; break}
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
+                if (!$?) {$success = $false; break}
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
+                if (!$?) {$success = $false; break}
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-PasswordExpirationTime" /I:T    # read lapsv2 password
+                if (!$?) {$success = $false; break}
+                Write-Line "--> Reset LAPSv2 Password ..." 
+                $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
+                if (!$?) {$success = $false; break}
+            } else {
+                Write-Line "LAPSv2 extension not found - skipping..." -Type "Warning"
+            }
             Write-Line "--> Read BitLocker Information ..." 
             $res = dsacls "$Script:Target" /G "$Script:AdObject`:CCDC;msFVE-REcoveryInformation" /I:T # read BitLocker Information
             if (!$?) {$success = $false; break}
@@ -473,6 +515,7 @@ $DateStr = (Get-Date).ToString("yyyyMMddHHmm")
 $BaseDirectory = If($PSISE){split-path $psise.CurrentFile.FullPath}else{Split-Path $MyInvocation.MyCommand.Definition -Parent}
 $LogfileName = "$($BaseDirectory)\SetPermissions-$($PermissionSet)-$($DateStr).txt"
 $rootdse = Get-ADRootDSE
+$schemaDN = (Get-ADRootDSE).schemaNamingContext
 $DomainDN = (Get-ADDomain).DistinguishedName
 #$ExportFilename = "$($BaseDirectory)\PermissionSet-$($Target.Split(",")[0].split("=")[1].replace(" ","-"))-$($DateStr).csv"
 $ExportFilename = "$($BaseDirectory)\PermissionSet-$($Target.Split(",")[0].replace(" ","-"))-$($DateStr).csv"
@@ -481,13 +524,13 @@ $PreReqCheckFailed = $false
 ##object guids
 #hashtable for GUID values of each schema class and attribute
 $Guidmap = @{}
-Get-ADObject -SearchBase ($rootdse.SchemaNamingContext) -LDAPFilter `
+Get-ADObject -SearchBase ($schemaDN) -LDAPFilter `
     "(schemaidguid=*)" -Properties lDAPDisplayName,schemaIDGUID | 
     % {$Guidmap[$_.lDAPDisplayName]=[System.GUID]$_.schemaIDGUID}
 
 #hashtable for GUID value of each extended right in the forest
 $ExtendedRightsMap = @{}
-Get-ADObject -SearchBase ($rootdse.ConfigurationNamingContext) -LDAPFilter `
+Get-ADObject -SearchBase ($schemaDN) -LDAPFilter `
     "(&(objectclass=controlAccessRight)(rightsguid=*))" -Properties displayName,rightsGuid | 
     % {$ExtendedRightsMap[$_.displayName]=[System.GUID]$_.rightsGuid}
 
