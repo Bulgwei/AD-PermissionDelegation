@@ -70,8 +70,6 @@
 #
 ### ManageGroupsOU
 # manage groups objects
-# BitLocker & LAPS are optional permissions
-# which can be enabled
 # create group         --> "CC;group" /I:T
 # delete group         --> "DC;group" /I:T
 # manage group members --> "RPWP;member" /I:T
@@ -97,8 +95,8 @@
 #
 # Read Lapsv2 Pwd            --> ":CA;msLAPS-Password" /I:T                  # read lapsv2 password
 # Read encrypted Lapsv2 Pwd  --> ":CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
-# Read Lapsv2 Pwd History    --> ":CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
-# Read Lapsv2 Pwd expiry     --> ":CA;msLAPS-PasswordExpirationTime" /I:T    # read lapsv2 password
+# Read Lapsv2 Pwd History    --> ":CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password history
+# Read Lapsv2 Pwd expiry     --> ":CA;msLAPS-PasswordExpirationTime" /I:T    # reset lapsv2 password
 # Reset Lapsv2 Pwd           --> ":RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
 #
 #
@@ -107,6 +105,8 @@
 #
 ### ManageComputersOU
 # manage computer objects
+# BitLocker & LAPS are optional permissions
+# which can be enabled
 # reset pwd                --> "CA;Reset Password;computer" /I:S
 #                          --> "RPWP;pwdLastSet;computer" /I:S
 # Disable computer account --> "RPWP;userAccountControl;computer" /I:S
