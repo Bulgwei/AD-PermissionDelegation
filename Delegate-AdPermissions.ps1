@@ -26,7 +26,7 @@
 #	.\Delegate-AdPermissions.ps1 -AdObject <AdDn> -Target <DN> -PermissionSet [-AddLapsPermissions] [-AddBitLockerPermissions]
 #
 #     The flags '-AddLapsPermissions' and 'AddBitLockerPermissions' can only be used together with permission set 'ManageComputersOU'
-#     Both permissions are already included in permission set 'T2RestrictedDeviceOperators'
+#     Both permissions are already included in permission set 'RestrictedDeviceOperators'
 #
 #	.\Delegate-AdPermissions.ps1 -Target <DN> -BreakInheritance
 #     'BreakInheritance' flag will disable inheritance on the target OU
@@ -45,12 +45,13 @@
 # full control all objects in OU --> "GA" /I:T
 # 
 #
-### T2AccountOperator role permissions
-# full control all objects in OU --> "GA;;user"  /I:S
-#                                --> "CCDC;user" /I:T
+### AccountOperator role permissions
+# full control all user objects in OU --> "GA;;user"  /I:S
+#                                     --> "CCDC;user" /I:T
 # 
 #
-### T2HelpdeskUser role permissions
+### HelpdeskUser role permissions
+# manage user passwords
 # reset pwd       --> "CA;Reset Password;user" /I:S
 #                 --> "RPWP;pwdLastSet;user" /I:S
 # unlock account  --> "RPWP;lockoutTime;user" /I:S
@@ -58,6 +59,7 @@
 #
 #
 ### ManageUserOU
+# manage user objects
 # reset pwd       --> "CA;Reset Password;user" /I:S
 #                 --> "RPWP;pwdLastSet;user" /I:S
 # unlock account  --> "RPWP;lockoutTime;user" /I:S
@@ -67,21 +69,31 @@
 #
 #
 ### ManageGroupsOU
+# manage groups objects
+# BitLocker & LAPS are optional permissions
+# which can be enabled
 # create group         --> "CC;group" /I:T
 # delete group         --> "DC;group" /I:T
 # manage group members --> "RPWP;member" /I:T
 #
 #
-### T2RestrictedDeviceOperators - manage computers OU + LAPS + BitLocker
+### RestrictedDeviceOperators
+# no phsical access to computer object
+# manage computers OU + LAPS + BitLocker in AD
 # reset pwd                --> "CA;Reset Password;computer" /I:S
 #                          --> "RPWP;pwdLastSet;computer" /I:S
 # Disable computer account --> "RPWP;userAccountControl;computer" /I:S
 # delete computer objects  --> "DC;computer" /I:T
 # Join/create computer objects  --> "CC;computer" /I:T
+# move computer objects    --> "RPWP;;computer" /I:S
 #
 # AddLapsPermissions
 # Read Lapsv1 Pwd            --> "CA;ms-Mcs-AdmPwd" /I:T 
 # Reset Lapsv1 Pwd           --> "WP;ms-Mcs-AdmPwd" /I:T
+#
+# trying to use LAPSv2 PoS cmdlets to assign LAPS permissions
+# in case the module is not available fall back to DSACLS will be used
+# --> result might not be sufficient
 #
 # Read Lapsv2 Pwd            --> ":CA;msLAPS-Password" /I:T                  # read lapsv2 password
 # Read encrypted Lapsv2 Pwd  --> ":CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
@@ -94,9 +106,11 @@
 #
 #
 ### ManageComputersOU
+# manage computer objects
 # reset pwd                --> "CA;Reset Password;computer" /I:S
 #                          --> "RPWP;pwdLastSet;computer" /I:S
 # Disable computer account --> "RPWP;userAccountControl;computer" /I:S
+# move computers           --> "RPWP;;computer" /I:S
 #
 #
 ### ManageGroup
@@ -119,6 +133,10 @@
 #      added LAPSv2 information to the permission sets
 # version 2.4 / 23.02.2026
 #      fixed some inheritance bugs
+# version 2.5 / 25.03.2026
+#      fixed some permission bugs (move computer)
+#      switched LAPS permissions to LAPSv2 cmdlets as 1st choice
+#      removed reference to tiering level
 #
 # dev'd by andreas.luy@microsoft.com
 # 
@@ -132,7 +150,7 @@ param(
     [string]$Target,
 
     [Parameter(Mandatory=$true, ParameterSetName="SetPerms")]
-    [ValidateSet('T2HelpdeskUser','T2AccountOperator', 'ManageOU','ManageUserOU', 'ManageGroupOU', 'ManageComputersOU', 'ManageGroup', 'T2RestrictedDeviceOperators')]
+    [ValidateSet('HelpdeskUser','AccountOperator', 'ManageOU','ManageUserOU', 'ManageGroupOU', 'ManageComputersOU', 'ManageGroup', 'RestrictedDeviceOperators')]
     [string]$PermissionSet,
 
     [Parameter(Mandatory=$false, ParameterSetName="SetPerms")]
@@ -313,7 +331,7 @@ function Delegate-Permissions
 
 
     switch ($Script:PermissionSet) {
-        "T2AccountOperator" {
+        "AccountOperator" {
             Write-Line "--> Full control on user class ..." 
             $res = dsacls "$Script:Target" /G "$($Script:AdObject):GA;;user" /I:S # full control on OU and all sub OUs for user objects only
             if (!$?) {$success = $false; break}
@@ -321,7 +339,7 @@ function Delegate-Permissions
             if (!$?) {$success = $false; break}
         }
 
-        "T2HelpdeskUser" {
+        "HelpdeskUser" {
             Write-Line "--> Reset Password ..." 
             $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;user" /I:S       # reset pwd
             if (!$?) {$success = $false; break}
@@ -394,23 +412,38 @@ function Delegate-Permissions
                     Write-Line "LAPSv1 extension not found - skipping..." -Type "Warning"
                 }
                 if ($Script:Guidmap.ContainsKey('msLAPS-Password')) {
-                    Write-Line "--> Read LAPSv2 Password ..." 
-                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-Password" /I:T                  # read lapsv2 password
-                    if (!$?) {$success = $false; break}
-                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
-                    if (!$?) {$success = $false; break}
-                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
-                    if (!$?) {$success = $false; break}
-                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-PasswordExpirationTime" /I:T    # read lapsv2 password
-                    if (!$?) {$success = $false; break}
-                    Write-Line "--> Reset LAPSv2 Password ..." 
-                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
-                    if (!$?) {$success = $false; break}
+                    Write-Line "--> Checking availability of LAPSv2 PowerShell module ..." 
+                    $LapsModuleName = (Get-Module -ListAvailable | Where-object {$_.Name -like '*laps*'})
+                    if ($LapsModuleName) {
+                        try {
+                            Write-Line "Module available - trying to load ..." -Type "Warning"
+                            Import-Module -Name $LapsModuleName
+                            Write-Line "Module loaded ..." -Type "Success"
+                        } catch {
+                        Write-Line "Could not load LAPSv2 PowerShell module - skipping..." -Type "Warning"
+                            $success = $false
+                            break
+                        }
+                        Write-Line "--> Read LAPSv2 Password ..." 
+                        Set-LapsADReadPasswordPermission -Identity "$($Script:Target)" -AllowedPrincipals "$($NbtDomainName)\$($SourceName)"
+                        Set-LapsADResetPasswordPermission -Identity "$($Script:Target)" -AllowedPrincipals "$($NbtDomainName)\$($SourceName)"
+                    } else {
+                        Write-Line "LAPSv2 module not availabile - trying to workaround ..." -Type "Warning"
+                        Write-Line "NOTE: the result might not be sufficient ..." -Type "Warning"
+                        Write-Line "--> Read LAPSv2 Password ..." 
+                        $res = dsacls "$Script:Target" /G "$Script:AdObject`:RP;msLAPS-Password" /I:T                 # read lapsv2 password
+                        if (!$?) {$success = $false; break}
+                        $res = dsacls "$Script:Target" /G "$Script:AdObject`:WPRP;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
+                        if (!$?) {$success = $false; break}
+                        $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
+                        if (!$?) {$success = $false; break}
+                        Write-Line "--> Reset LAPSv2 Password ..." 
+                        $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
+                        if (!$?) {$success = $false; break}
+                    }
                 } else {
                     Write-Line "LAPSv2 extension not found - skipping..." -Type "Warning"
                 }
-            } else {
-                Write-Line "--> LAPS permissions needs to be set separately if required ..." -Type "Warning"
             }
             if ($AddBitLockerPermissions) {
                 Write-Line "--> Read BitLocker Information ..." 
@@ -420,7 +453,7 @@ function Delegate-Permissions
                 if (!$?) {$success = $false; break}
             }
         }
-        "T2RestrictedDeviceOperators" {
+        "RestrictedDeviceOperators" {
             Write-Line "--> Reset Password ..." 
             $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;Reset Password;computer" /I:S       # reset pwd
             if (!$?) {$success = $false; break}
@@ -435,6 +468,9 @@ function Delegate-Permissions
             Write-Line "--> Delete Computer ..." 
             $res = dsacls "$Script:Target" /G "$Script:AdObject`:DC;computer" /I:T                      # delete computer
             if (!$?) {$success = $false; break}
+            Write-Line "--> Move Computer ..." 
+            $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;;computer" /I:S                   # move computer
+            if (!$?) {$success = $false; break}
             if ($Script:Guidmap.ContainsKey('ms-Mcs-AdmPwd')) {
                 Write-Line "--> Read LAPSv1 Password ..." 
                 $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;ms-Mcs-AdmPwd" /I:T             # read lapsv1 password
@@ -446,18 +482,35 @@ function Delegate-Permissions
                 Write-Line "LAPSv1 extension not found - skipping..." -Type "Warning"
             }
             if ($Script:Guidmap.ContainsKey('msLAPS-Password')) {
-                Write-Line "--> Read LAPSv2 Password ..." 
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-Password" /I:T                 # read lapsv2 password
-                if (!$?) {$success = $false; break}
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
-                if (!$?) {$success = $false; break}
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
-                if (!$?) {$success = $false; break}
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:CA;msLAPS-PasswordExpirationTime" /I:T    # read lapsv2 password
-                if (!$?) {$success = $false; break}
-                Write-Line "--> Reset LAPSv2 Password ..." 
-                $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
-                if (!$?) {$success = $false; break}
+                Write-Line "--> Checking availability of LAPSv2 PowerShell module ..." 
+                $LapsModuleName = (Get-Module -ListAvailable | Where-object {$_.Name -like '*laps*'})
+                if ($LapsModuleName) {
+                    try {
+                        Write-Line "Module available - trying to load ..." -Type "Warning"
+                        Import-Module -Name $LapsModuleName
+                        Write-Line "Module loaded ..." -Type "Success"
+                    } catch {
+                    Write-Line "Could not load LAPSv2 PowerShell module - skipping..." -Type "Warning"
+                        $success = $false
+                        break
+                    }
+                    Write-Line "--> Read LAPSv2 Password ..." 
+                    Set-LapsADReadPasswordPermission -Identity "$($Script:Target)" -AllowedPrincipals "$($NbtDomainName)\$($SourceName)"
+                    Set-LapsADResetPasswordPermission -Identity "$($Script:Target)" -AllowedPrincipals "$($NbtDomainName)\$($SourceName)"
+                } else {
+                    Write-Line "LAPSv2 module not availabile - trying to workaround ..." -Type "Warning"
+                    Write-Line "NOTE: the result might not be sufficient ..." -Type "Warning"
+                    Write-Line "--> Read LAPSv2 Password ..." 
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:RP;msLAPS-Password" /I:T                 # read lapsv2 password
+                    if (!$?) {$success = $false; break}
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:WPRP;msLAPS-EncryptedPassword" /I:T         # read lapsv2 password
+                    if (!$?) {$success = $false; break}
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;msLAPS-EncryptedPasswordHistory" /I:T  # read lapsv2 password
+                    if (!$?) {$success = $false; break}
+                    Write-Line "--> Reset LAPSv2 Password ..." 
+                    $res = dsacls "$Script:Target" /G "$Script:AdObject`:RPWP;msLAPS-PasswordExpirationTime" /I:T  # reset lapsv2 password
+                    if (!$?) {$success = $false; break}
+                }
             } else {
                 Write-Line "LAPSv2 extension not found - skipping..." -Type "Warning"
             }
@@ -527,6 +580,7 @@ $LogfileName = "$($BaseDirectory)\SetPermissions-$($PermissionSet)-$($DateStr).t
 $rootdse = Get-ADRootDSE
 $schemaDN = (Get-ADRootDSE).schemaNamingContext
 $DomainDN = (Get-ADDomain).DistinguishedName
+$NbtDomainName = (Get-ADDomain).NetBIOSName
 #$ExportFilename = "$($BaseDirectory)\PermissionSet-$($Target.Split(",")[0].split("=")[1].replace(" ","-"))-$($DateStr).csv"
 $ExportFilename = "$($BaseDirectory)\PermissionSet-$($Target.Split(",")[0].replace(" ","-"))-$($DateStr).csv"
 $PreReqCheckFailed = $false
